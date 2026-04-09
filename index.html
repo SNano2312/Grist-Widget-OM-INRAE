@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans,'system-ui');font-size:14px;color:var(--color-text-primary);background:var(--color-background-tertiary)}
+.app{max-width:1400px;margin:0 auto;padding:1.5rem}
+.tabs{display:flex;gap:2px;border-bottom:0.5px solid var(--color-border-tertiary);margin-bottom:1.5rem}
+.tab{padding:8px 20px;cursor:pointer;border-radius:6px 6px 0 0;font-size:13px;font-weight:500;color:var(--color-text-secondary);background:transparent;border:0.5px solid transparent;border-bottom:none;position:relative;top:1px}
+.tab.active{color:var(--color-text-primary);background:var(--color-background-primary);border-color:var(--color-border-tertiary)}
+.panel{display:none}.panel.active{display:block}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.25rem;margin-bottom:1rem}
+.drop-zone{border:1.5px dashed var(--color-border-secondary);border-radius:var(--border-radius-lg);padding:3rem 2rem;text-align:center;cursor:pointer;transition:background .15s}
+.drop-zone:hover,.drop-zone.drag{background:var(--color-background-secondary)}
+.drop-zone input{display:none}
+.drop-icon{font-size:32px;margin-bottom:12px}
+.drop-title{font-size:16px;font-weight:500;margin-bottom:6px}
+.drop-sub{font-size:13px;color:var(--color-text-secondary)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:transparent;cursor:pointer;font-size:13px;font-weight:500;color:var(--color-text-primary);transition:background .1s}
+.btn:hover{background:var(--color-background-secondary)}
+.btn.primary{background:#185FA5;color:#fff;border-color:#185FA5}
+.btn.primary:hover{background:#0C447C}
+.btn.danger{color:#A32D2D;border-color:#F7C1C1}
+.btn.danger:hover{background:#FCEBEB}
+.btn:disabled{opacity:.45;cursor:default}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:500}
+.badge-info{background:#E6F1FB;color:#0C447C}
+.badge-warn{background:#FAEEDA;color:#633806}
+.badge-del{background:#FCEBEB;color:#791F1F;text-decoration:line-through}
+.badge-ok{background:#EAF3DE;color:#3B6D11}
+.step{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.step:last-child{border:none}
+.step-num{width:28px;height:28px;border-radius:50%;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;flex-shrink:0}
+.step-num.done{background:#EAF3DE;color:#3B6D11;border-color:#C0DD97}
+.step-num.active{background:#E6F1FB;color:#185FA5;border-color:#B5D4F4}
+.tbl-wrap{overflow:auto;max-height:400px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--color-background-secondary);padding:7px 12px;text-align:left;font-weight:500;border-bottom:0.5px solid var(--color-border-tertiary);white-space:nowrap;position:sticky;top:0}
+td{padding:6px 12px;border-bottom:0.5px solid var(--color-border-tertiary);white-space:nowrap}
+tr:last-child td{border:none}
+tr:hover td{background:var(--color-background-secondary)}
+th.deleted{background:#FCEBEB;color:#A32D2D;text-decoration:line-through}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1rem}
+.stat{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:.75rem 1rem}
+.stat-label{font-size:11px;color:var(--color-text-secondary);margin-bottom:4px}
+.stat-val{font-size:20px;font-weight:500}
+.col-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pivot-controls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:1rem}
+select{padding:7px 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);font-size:13px;width:100%}
+.pivot-tbl th{background:#E6F1FB;color:#0C447C}
+.pivot-tbl th.total{background:#185FA5;color:#fff}
+.pivot-tbl td.total{font-weight:500;background:var(--color-background-secondary)}
+.chart-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:1rem}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.chart-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem}
+.chart-title{font-size:13px;font-weight:500;margin-bottom:12px;color:var(--color-text-secondary)}
+canvas{max-height:260px}
+.empty{text-align:center;padding:3rem;color:var(--color-text-secondary);font-size:13px}
+.info-box{background:var(--color-background-secondary);border-left:3px solid #378ADD;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;padding:.75rem 1rem;font-size:13px;color:var(--color-text-secondary);margin-bottom:1rem}
+.actions{display:flex;gap:8px;align-items:center;margin-bottom:1rem}
+@media(max-width:700px){.chart-grid{grid-template-columns:1fr}.pivot-controls{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('import')">① Import</div>
+  <div class="tab" id="tab-edit" onclick="switchTab('edit')">② Table modifiée</div>
+  <div class="tab" id="tab-pivot" onclick="switchTab('pivot')">③ TCD</div>
+  <div class="tab" id="tab-charts" onclick="switchTab('charts')">④ Graphiques</div>
+</div>
+
+<!-- TAB 1: IMPORT -->
+<div class="panel active" id="panel-import">
+  <div class="card">
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+      <div class="drop-icon">📊</div>
+      <div class="drop-title">Charger votre fichier Excel</div>
+      <div class="drop-sub">Glissez-déposez ou cliquez — .xlsx, .xls, .csv</div>
+    </div>
+  </div>
+  <div class="card" id="previewCard" style="display:none">
+    <div class="steps">
+      <div class="step"><div class="step-num done" id="s1">✓</div><div><b>Fichier chargé</b> — <span id="fileName"></span></div></div>
+      <div class="step"><div class="step-num active" id="s2">2</div><div>Colonnes à supprimer : <span class="col-chips" id="colChips"></span></div></div>
+      <div class="step"><div class="step-num" id="s3">3</div><div>Copier vers la table modifiée</div></div>
+    </div>
+    <div class="tbl-wrap" id="previewWrap" style="margin:1rem 0"></div>
+    <div class="actions">
+      <button class="btn primary" onclick="applyAndCopy()">Copier & supprimer les colonnes →</button>
+      <span id="importMsg" style="font-size:13px;color:var(--color-text-secondary)"></span>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: TABLE MODIFIEE -->
+<div class="panel" id="panel-edit">
+  <div id="editEmpty" class="empty">Chargez d'abord un fichier dans l'onglet Import</div>
+  <div id="editContent" style="display:none">
+    <div class="stats" id="editStats"></div>
+    <div class="info-box" id="editInfo"></div>
+    <div class="actions">
+      <button class="btn" onclick="exportTable()">⬇ Exporter (.xlsx)</button>
+    </div>
+    <div class="tbl-wrap" id="editWrap"></div>
+  </div>
+</div>
+
+<!-- TAB 3: TCD -->
+<div class="panel" id="panel-pivot">
+  <div id="pivotEmpty" class="empty">Chargez d'abord un fichier dans l'onglet Import</div>
+  <div id="pivotContent" style="display:none">
+    <div class="card">
+      <div class="pivot-controls">
+        <div><label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:4px">Lignes (axe Y)</label><select id="pivotRow" onchange="buildPivot()"></select></div>
+        <div><label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:4px">Colonnes (axe X)</label><select id="pivotCol" onchange="buildPivot()"></select></div>
+        <div><label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:4px">Valeur</label><select id="pivotVal" onchange="buildPivot()"></select></div>
+      </div>
+      <div style="margin-bottom:8px;display:flex;gap:8px">
+        <select id="pivotAgg" onchange="buildPivot()" style="width:auto">
+          <option value="sum">Somme</option>
+          <option value="count">Comptage</option>
+          <option value="avg">Moyenne</option>
+          <option value="min">Min</option>
+          <option value="max">Max</option>
+        </select>
+      </div>
+    </div>
+    <div class="tbl-wrap" id="pivotWrap"></div>
+  </div>
+</div>
+
+<!-- TAB 4: GRAPHIQUES -->
+<div class="panel" id="panel-charts">
+  <div id="chartsEmpty" class="empty">Chargez d'abord un fichier dans l'onglet Import</div>
+  <div id="chartsContent" style="display:none">
+    <div class="card">
+      <div class="chart-controls">
+        <div><label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:4px">Axe X (catégories)</label><select id="chartX" onchange="buildCharts()"></select></div>
+        <div><label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:4px">Axe Y (valeurs)</label><select id="chartY" onchange="buildCharts()"></select></div>
+        <div><label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:4px">Grouper par</label><select id="chartGroup" onchange="buildCharts()"><option value="">— aucun —</option></select></div>
+      </div>
+    </div>
+    <div class="chart-grid">
+      <div class="chart-card"><div class="chart-title">Barres</div><canvas id="chartBar"></canvas></div>
+      <div class="chart-card"><div class="chart-title">Secteurs</div><canvas id="chartPie"></canvas></div>
+      <div class="chart-card"><div class="chart-title">Lignes</div><canvas id="chartLine"></canvas></div>
+      <div class="chart-card"><div class="chart-title">Barres horizontales</div><canvas id="chartHBar"></canvas></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const COLS_TO_DELETE = ['C','D','E','N','AI'];
+let rawData = [], modData = [], headers = [], modHeaders = [];
+let charts = {};
+
+function colLetter(idx){
+  let l='',n=idx+1;
+  while(n>0){l=String.fromCharCode(65+(n-1)%26)+l;n=Math.floor((n-1)/26)}
+  return l;
+}
+
+function switchTab(t){
+  document.querySelectorAll('.tab,.panel').forEach(e=>e.classList.remove('active'));
+  document.querySelector(`.tab[onclick*="${t}"]`).classList.add('active');
+  document.getElementById('panel-'+t).classList.add('active');
+}
+
+const dz=document.getElementById('dropZone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');handleFile(e.dataTransfer.files[0])});
+document.getElementById('fileInput').addEventListener('change',e=>handleFile(e.target.files[0]));
+
+function handleFile(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const json=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    if(!json.length)return;
+    headers=[...json[0]];
+    rawData=json.slice(1);
+    showPreview(file.name);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showPreview(name){
+  document.getElementById('fileName').textContent=name;
+  const chips=document.getElementById('colChips');
+  chips.innerHTML='';
+  headers.forEach((h,i)=>{
+    const letter=colLetter(i);
+    const isDel=COLS_TO_DELETE.includes(letter);
+    const b=document.createElement('span');
+    b.className='badge '+(isDel?'badge-del':'badge-info');
+    b.textContent=letter+(h?': '+h:'');
+    chips.appendChild(b);
+  });
+  renderTable(document.getElementById('previewWrap'),headers,rawData,true);
+  document.getElementById('previewCard').style.display='';
+}
+
+function renderTable(wrap,hdrs,rows,markDel=false){
+  const delIdx=new Set();
+  if(markDel)hdrs.forEach((_,i)=>{if(COLS_TO_DELETE.includes(colLetter(i)))delIdx.add(i)});
+  let h='<table><thead><tr>';
+  hdrs.forEach((c,i)=>{h+=`<th${delIdx.has(i)?' class="deleted"':''}>${c||colLetter(i)}</th>`});
+  h+='</tr></thead><tbody>';
+  rows.slice(0,200).forEach(r=>{
+    h+='<tr>';
+    hdrs.forEach((_,i)=>{h+=`<td>${r[i]??''}</td>`});
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  wrap.innerHTML=h;
+}
+
+function applyAndCopy(){
+  const delIdx=new Set();
+  headers.forEach((_,i)=>{if(COLS_TO_DELETE.includes(colLetter(i)))delIdx.add(i)});
+  modHeaders=headers.filter((_,i)=>!delIdx.has(i));
+  modData=rawData.map(r=>r.filter((_,i)=>!delIdx.has(i)));
+  document.getElementById('s3').className='step-num done';
+  document.getElementById('s3').textContent='✓';
+  document.getElementById('importMsg').textContent=`✓ Table copiée — ${modHeaders.length} colonnes, ${modData.length} lignes`;
+  populateEdited();
+  populateControls();
+  switchTab('edit');
+  ['tab-edit','tab-pivot','tab-charts'].forEach(id=>document.getElementById(id).style.color='');
+}
+
+function populateEdited(){
+  document.getElementById('editEmpty').style.display='none';
+  document.getElementById('editContent').style.display='';
+  const dels=COLS_TO_DELETE.filter(l=>headers.findIndex((_,i)=>colLetter(i)===l)>=0);
+  document.getElementById('editInfo').innerHTML=
+    `Colonnes supprimées : ${dels.map(l=>`<span class="badge badge-del">${l}</span>`).join(' ')} &nbsp;|&nbsp; `+
+    `Colonnes conservées : <span class="badge badge-ok">${modHeaders.length}</span> &nbsp;|&nbsp; `+
+    `Lignes : <span class="badge badge-info">${modData.length}</span>`;
+  const numCols=modHeaders.filter((_,i)=>modData.slice(0,50).every(r=>r[i]!==''&&!isNaN(Number(r[i])))).length;
+  document.getElementById('editStats').innerHTML=`
+    <div class="stat"><div class="stat-label">Lignes</div><div class="stat-val">${modData.length}</div></div>
+    <div class="stat"><div class="stat-label">Colonnes</div><div class="stat-val">${modHeaders.length}</div></div>
+    <div class="stat"><div class="stat-label">Cols. numériques</div><div class="stat-val">${numCols}</div></div>
+    <div class="stat"><div class="stat-label">Colonnes supprimées</div><div class="stat-val">${COLS_TO_DELETE.length}</div></div>`;
+  renderTable(document.getElementById('editWrap'),modHeaders,modData,false);
+}
+
+function exportTable(){
+  const ws=XLSX.utils.aoa_to_sheet([modHeaders,...modData]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Table modifiée');
+  XLSX.writeFile(wb,'table_modifiee.xlsx');
+}
+
+function populateControls(){
+  const opts=modHeaders.map((h,i)=>`<option value="${i}">${h||'Col '+(i+1)}</option>`).join('');
+  ['pivotRow','pivotCol','chartX','chartGroup'].forEach(id=>{
+    document.getElementById(id).innerHTML=opts;
+  });
+  const numH=modHeaders.filter((_,i)=>modData.slice(0,20).some(r=>!isNaN(Number(r[i]))&&r[i]!==''));
+  const numOpts=numH.length
+    ? numH.map(h=>`<option value="${modHeaders.indexOf(h)}">${h}</option>`).join('')
+    : opts;
+  document.getElementById('pivotVal').innerHTML=numOpts;
+  document.getElementById('chartY').innerHTML=numOpts;
+  document.getElementById('chartGroup').innerHTML='<option value="">— aucun —</option>'+opts;
+  document.getElementById('pivotContent').style.display='';
+  document.getElementById('pivotEmpty').style.display='none';
+  document.getElementById('chartsContent').style.display='';
+  document.getElementById('chartsEmpty').style.display='none';
+  buildPivot();buildCharts();
+}
+
+function getAgg(vals,agg){
+  const nums=vals.map(Number).filter(v=>!isNaN(v));
+  if(!nums.length)return 0;
+  if(agg==='sum')return nums.reduce((a,b)=>a+b,0);
+  if(agg==='count')return vals.length;
+  if(agg==='avg')return nums.reduce((a,b)=>a+b,0)/nums.length;
+  if(agg==='min')return Math.min(...nums);
+  if(agg==='max')return Math.max(...nums);
+  return 0;
+}
+
+function fmt(v,agg){return agg==='avg'?Number(v).toFixed(2):Math.round(v).toLocaleString('fr-FR')}
+
+function buildPivot(){
+  const rIdx=+document.getElementById('pivotRow').value;
+  const cIdx=+document.getElementById('pivotCol').value;
+  const vIdx=+document.getElementById('pivotVal').value;
+  const agg=document.getElementById('pivotAgg').value;
+  const map={};const rows=new Set();const cols=new Set();
+  modData.forEach(r=>{
+    const rv=String(r[rIdx]??''),cv=String(r[cIdx]??''),vv=r[vIdx]??0;
+    rows.add(rv);cols.add(cv);
+    if(!map[rv])map[rv]={};
+    if(!map[rv][cv])map[rv][cv]=[];
+    map[rv][cv].push(vv);
+  });
+  const rowArr=[...rows].sort();const colArr=[...cols].sort();
+  let h=`<table class="pivot-tbl"><thead><tr><th>${modHeaders[rIdx]||'Ligne'} / ${modHeaders[cIdx]||'Col'}</th>`;
+  colArr.forEach(c=>h+=`<th>${c}</th>`);
+  h+=`<th class="total">Total</th></tr></thead><tbody>`;
+  rowArr.forEach(rv=>{
+    h+=`<tr><td><b>${rv}</b></td>`;
+    let rowTotal=0;
+    colArr.forEach(cv=>{
+      const v=map[rv]&&map[rv][cv]?getAgg(map[rv][cv],agg):0;
+      rowTotal+=Number(v);
+      h+=`<td>${fmt(v,agg)}</td>`;
+    });
+    h+=`<td class="total">${fmt(rowTotal,agg)}</td></tr>`;
+  });
+  h+='<tr style="font-weight:500"><td><b>Total</b></td>';
+  colArr.forEach(cv=>{
+    let t=0;rowArr.forEach(rv=>{if(map[rv]&&map[rv][cv])t+=getAgg(map[rv][cv],agg)});
+    h+=`<td class="total">${fmt(t,agg)}</td>`;
+  });
+  const grand=rowArr.reduce((s,rv)=>s+colArr.reduce((ss,cv)=>ss+(map[rv]&&map[rv][cv]?getAgg(map[rv][cv],agg):0),0),0);
+  h+=`<td class="total" style="background:#185FA5;color:#fff">${fmt(grand,agg)}</td></tr>`;
+  h+='</tbody></table>';
+  document.getElementById('pivotWrap').innerHTML=h;
+}
+
+const COLORS=['#185FA5','#1D9E75','#D85A30','#BA7517','#D4537E','#639922','#533AB7','#3C3489'];
+
+function buildCharts(){
+  const xIdx=+document.getElementById('chartX').value;
+  const yIdx=+document.getElementById('chartY').value;
+  const gVal=document.getElementById('chartGroup').value;
+  Object.values(charts).forEach(c=>c.destroy());charts={};
+  const agg={};
+  modData.forEach(r=>{
+    const k=String(r[xIdx]??'');
+    if(!agg[k])agg[k]=[];
+    agg[k].push(Number(r[yIdx])||0);
+  });
+  const labels=Object.keys(agg).sort().slice(0,20);
+  const vals=labels.map(l=>agg[l].reduce((a,b)=>a+b,0));
+  const makeChart=(id,type,opts={})=>{
+    const ctx=document.getElementById(id).getContext('2d');
+    charts[id]=new Chart(ctx,{type,data:{labels,datasets:[{label:modHeaders[yIdx]||'Valeur',data:vals,backgroundColor:type==='pie'||type==='doughnut'?COLORS:COLORS[0]+'cc',borderColor:COLORS[0],borderWidth:type==='line'?2:0,fill:type==='line'?false:undefined,tension:.3}]},options:{responsive:true,maintainAspectRatio:true,...opts,plugins:{legend:{display:type==='pie',position:'right',labels:{font:{size:11},padding:8}}}}});
+  };
+  makeChart('chartBar','bar',{indexAxis:'x',scales:{x:{ticks:{maxRotation:45,font:{size:10}}},y:{ticks:{font:{size:10}}}}});
+  makeChart('chartPie','doughnut',{});
+  makeChart('chartLine','line',{scales:{x:{ticks:{maxRotation:45,font:{size:10}}},y:{ticks:{font:{size:10}}}}});
+  makeChart('chartHBar','bar',{indexAxis:'y',scales:{x:{ticks:{font:{size:10}}},y:{ticks:{font:{size:10}}}}});
+}
+</script>
+</body>
+</html>
