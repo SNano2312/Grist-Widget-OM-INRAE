@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans,'system-ui');font-size:14px;color:var(--color-text-primary);background:var(--color-background-tertiary)}
+.app{max-width:1400px;margin:0 auto;padding:1.5rem}
+.tabs{display:flex;gap:2px;border-bottom:0.5px solid var(--color-border-tertiary);margin-bottom:1.5rem}
+.tab{padding:8px 20px;cursor:pointer;border-radius:6px 6px 0 0;font-size:13px;font-weight:500;color:var(--color-text-secondary);background:transparent;border:0.5px solid transparent;border-bottom:none;position:relative;top:1px}
+.tab.active{color:var(--color-text-primary);background:var(--color-background-primary);border-color:var(--color-border-tertiary)}
+.panel{display:none}.panel.active{display:block}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.25rem;margin-bottom:1rem}
+.drop-zone{border:1.5px dashed var(--color-border-secondary);border-radius:var(--border-radius-lg);padding:3rem 2rem;text-align:center;cursor:pointer;transition:background .15s}
+.drop-zone:hover,.drop-zone.drag{background:var(--color-background-secondary)}
+.drop-zone input{display:none}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:transparent;cursor:pointer;font-size:13px;font-weight:500;color:var(--color-text-primary);transition:background .1s}
+.btn:hover{background:var(--color-background-secondary)}
+.btn.primary{background:#185FA5;color:#fff;border-color:#185FA5}.btn.primary:hover{background:#0C447C}
+.btn:disabled{opacity:.4;cursor:default;pointer-events:none}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:500}
+.badge-info{background:#E6F1FB;color:#0C447C}.badge-del{background:#FCEBEB;color:#791F1F;text-decoration:line-through}.badge-ok{background:#EAF3DE;color:#3B6D11}
+.tbl-outer{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);overflow:hidden}
+.tbl-scroll{overflow:auto;max-height:440px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--color-background-secondary);padding:7px 12px;text-align:left;font-weight:500;border-bottom:0.5px solid var(--color-border-tertiary);white-space:nowrap;position:sticky;top:0;z-index:1}
+td{padding:6px 12px;border-bottom:0.5px solid var(--color-border-tertiary);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+tr:last-child td{border:none}
+tr:hover td{background:var(--color-background-secondary)}
+th.deleted{background:#FCEBEB;color:#A32D2D;text-decoration:line-through}
+.pager{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);font-size:12px;color:var(--color-text-secondary)}
+.pager-info{flex:1}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1rem}
+.stat{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:.75rem 1rem}
+.stat-label{font-size:11px;color:var(--color-text-secondary);margin-bottom:4px}
+.stat-val{font-size:20px;font-weight:500}
+.pivot-controls{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:1rem}
+select{padding:7px 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);font-size:13px;width:100%}
+.pivot-tbl th{background:#E6F1FB;color:#0C447C}
+.pivot-tbl th.total{background:#185FA5;color:#fff}
+.pivot-tbl td.total{font-weight:500;background:var(--color-background-secondary)}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.chart-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem}
+.chart-title{font-size:13px;font-weight:500;margin-bottom:12px;color:var(--color-text-secondary)}
+canvas{max-height:260px}
+.empty{text-align:center;padding:3rem;color:var(--color-text-secondary);font-size:13px}
+.info-box{background:var(--color-background-secondary);border-left:3px solid #378ADD;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;padding:.75rem 1rem;font-size:13px;color:var(--color-text-secondary);margin-bottom:1rem}
+.actions{display:flex;gap:8px;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+.col-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;max-height:100px;overflow:auto}
+.status{font-size:13px;color:var(--color-text-secondary);margin-top:8px;text-align:center}
+@media(max-width:700px){.chart-grid{grid-template-columns:1fr}.pivot-controls{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('import')">① Import</div>
+  <div class="tab" onclick="switchTab('edit')">② Table modifiée</div>
+  <div class="tab" onclick="switchTab('pivot')">③ TCD</div>
+  <div class="tab" onclick="switchTab('charts')">④ Graphiques</div>
+</div>
+
+<!-- TAB 1 -->
+<div class="panel active" id="panel-import">
+  <div class="card">
+    <div class="drop-zone" id="dz" onclick="document.getElementById('fi').click()">
+      <input type="file" id="fi" accept=".xlsx,.xls,.csv">
+      <div style="font-size:32px;margin-bottom:10px">📊</div>
+      <div style="font-size:16px;font-weight:500;margin-bottom:6px">Charger votre fichier Excel</div>
+      <div style="font-size:13px;color:var(--color-text-secondary)">Glissez-déposez ou cliquez — .xlsx, .xls, .csv</div>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+  <div class="card" id="previewCard" style="display:none">
+    <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px">
+      <b id="fileName"></b>
+      <span id="fileInfo" class="badge badge-info"></span>
+    </div>
+    <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:6px">Colonnes (barrées = supprimées) :</div>
+    <div class="col-chips" id="colChips"></div>
+    <div style="margin-top:1rem">
+      <div class="tbl-outer"><div class="tbl-scroll" id="previewWrap"></div></div>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-top:4px">Aperçu : 50 premières lignes</div>
+    </div>
+    <div class="actions" style="margin-top:1rem">
+      <button class="btn primary" onclick="applyAndCopy()">Copier &amp; supprimer les colonnes →</button>
+      <span id="importMsg" style="font-size:13px;color:#3B6D11"></span>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2 -->
+<div class="panel" id="panel-edit">
+  <div id="editEmpty" class="empty">Chargez d'abord un fichier dans l'onglet Import</div>
+  <div id="editContent" style="display:none">
+    <div class="stats" id="editStats"></div>
+    <div class="info-box" id="editInfo"></div>
+    <div class="actions"><button class="btn" onclick="exportTable()">⬇ Exporter (.xlsx)</button></div>
+    <div class="tbl-outer">
+      <div class="tbl-scroll" id="editWrap"></div>
+      <div class="pager">
+        <span class="pager-info" id="pagerInfo"></span>
+        <button class="btn" id="btnPrev" onclick="changePage(-1)">← Préc.</button>
+        <button class="btn" id="btnNext" onclick="changePage(1)">Suiv. →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3 -->
+<div class="panel" id="panel-pivot">
+  <div id="pivotEmpty" class="empty">Chargez d'abord un fichier dans l'onglet Import</div>
+  <div id="pivotContent" style="display:none">
+    <div class="card">
+      <div class="pivot-controls">
+        <div><label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:4px">Lignes</label><select id="pivotRow" onchange="buildPivot()"></select></div>
+        <div><label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:4px">Colonnes</label><select id="pivotCol" onchange="buildPivot()"></select></div>
+        <div><label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:4px">Valeur</label><select id="pivotVal" onchange="buildPivot()"></select></div>
+        <div><label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:4px">Agrégation</label>
+          <select id="pivotAgg" onchange="buildPivot()">
+            <option value="sum">Somme</option><option value="count">Comptage</option>
+            <option value="avg">Moyenne</option><option value="min">Min</option><option value="max">Max</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="tbl-outer"><div class="tbl-scroll" id="pivotWrap"></div></div>
+  </div>
+</div>
+
+<!-- TAB 4 -->
+<div class="panel" id="panel-charts">
+  <div id="chartsEmpty" class="empty">Chargez d'abord un fichier dans l'onglet Import</div>
+  <div id="chartsContent" style="display:none">
+    <div class="card" style="margin-bottom:1rem">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div><label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:4px">Axe X (catégories)</label><select id="chartX" onchange="buildCharts()"></select></div>
+        <div><label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:4px">Axe Y (valeurs)</label><select id="chartY" onchange="buildCharts()"></select></div>
+        <div><label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:4px">Limite</label>
+          <select id="chartLimit" onchange="buildCharts()">
+            <option value="10">Top 10</option><option value="20">Top 20</option><option value="50">Top 50</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="chart-grid">
+      <div class="chart-card"><div class="chart-title">Barres verticales</div><canvas id="chartBar"></canvas></div>
+      <div class="chart-card"><div class="chart-title">Donut</div><canvas id="chartPie"></canvas></div>
+      <div class="chart-card"><div class="chart-title">Lignes</div><canvas id="chartLine"></canvas></div>
+      <div class="chart-card"><div class="chart-title">Barres horizontales</div><canvas id="chartHBar"></canvas></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const COLS_TO_DELETE=['C','D','E','N','AI'];
+const PAGE_SIZE=50;
+let rawHeaders=[],rawRows=[],modHeaders=[],modRows=[],currentPage=0,charts={};
+
+function idxToLetter(i){ // 0-based
+  let l='',n=i+1;
+  while(n>0){l=String.fromCharCode(65+(n-1)%26)+l;n=Math.floor((n-1)/26);}
+  return l;
+}
+
+function switchTab(t){
+  document.querySelectorAll('.tab,.panel').forEach(e=>e.classList.remove('active'));
+  document.querySelector(`.tab[onclick*="'${t}'"]`).classList.add('active');
+  document.getElementById('panel-'+t).classList.add('active');
+}
+
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>e.preventDefault());
+dz.addEventListener('drop',e=>{e.preventDefault();handleFile(e.dataTransfer.files[0]);});
+document.getElementById('fi').addEventListener('change',e=>handleFile(e.target.files[0]));
+
+function setStatus(msg){document.getElementById('status').textContent=msg;}
+
+function handleFile(file){
+  if(!file) return;
+  setStatus('Lecture en cours…');
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    setStatus('Analyse du fichier…');
+    setTimeout(()=>{
+      try{
+        const wb=XLSX.read(ev.target.result,{type:'array',cellDates:false,sheetStubs:true});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+
+        // ── CORRECTION CLÉ : recalculer !ref depuis les vraies clés de cellules ──
+        const cellKeys=Object.keys(ws).filter(k=>!k.startsWith('!'));
+        let minR=Infinity,maxR=-Infinity,minC=Infinity,maxC=-Infinity;
+        cellKeys.forEach(k=>{
+          try{
+            const d=XLSX.utils.decode_cell(k);
+            if(d.r<minR)minR=d.r; if(d.r>maxR)maxR=d.r;
+            if(d.c<minC)minC=d.c; if(d.c>maxC)maxC=d.c;
+          }catch(e){}
+        });
+        ws['!ref']=XLSX.utils.encode_range({s:{r:minR,c:minC},e:{r:maxR,c:maxC}});
+
+        // Lire toutes les lignes
+        const all=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+        if(!all||all.length<2){setStatus('Fichier vide ou non reconnu.');return;}
+
+        rawHeaders=all[0].map((h,i)=>h!==''?String(h):idxToLetter(i));
+        rawRows=all.slice(1).filter(r=>r.some(c=>c!==''&&c!==null&&c!==undefined));
+
+        setStatus('✓ '+rawRows.length.toLocaleString('fr-FR')+' lignes chargées');
+        showPreview(file.name);
+      }catch(err){
+        setStatus('Erreur : '+err.message);
+        console.error(err);
+      }
+    },30);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showPreview(name){
+  document.getElementById('fileName').textContent=name;
+  document.getElementById('fileInfo').textContent=rawHeaders.length+' colonnes · '+rawRows.length.toLocaleString('fr-FR')+' lignes';
+  const chips=document.getElementById('colChips');
+  chips.innerHTML='';
+  rawHeaders.forEach((h,i)=>{
+    const letter=idxToLetter(i);
+    const isDel=COLS_TO_DELETE.includes(letter);
+    const b=document.createElement('span');
+    b.className='badge '+(isDel?'badge-del':'badge-info');
+    b.title='Colonne '+letter;
+    b.textContent=letter+': '+(h.length>14?h.slice(0,14)+'…':h);
+    chips.appendChild(b);
+  });
+  renderTable(document.getElementById('previewWrap'),rawHeaders,rawRows.slice(0,50),true);
+  document.getElementById('previewCard').style.display='';
+}
+
+function renderTable(container,hdrs,rows,markDel){
+  const delSet=new Set();
+  if(markDel) hdrs.forEach((_,i)=>{if(COLS_TO_DELETE.includes(idxToLetter(i)))delSet.add(i);});
+  let h='<table><thead><tr>';
+  hdrs.forEach((c,i)=>{h+=`<th${delSet.has(i)?' class="deleted"':''}>${c}</th>`;});
+  h+='</tr></thead><tbody>';
+  rows.forEach(r=>{
+    h+='<tr>';
+    hdrs.forEach((_,i)=>{
+      const v=r[i]!==undefined&&r[i]!==null?r[i]:'';
+      h+=`<td title="${String(v).replace(/"/g,'&quot;')}">${v}</td>`;
+    });
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  container.innerHTML=h;
+}
+
+function applyAndCopy(){
+  const delIdx=new Set();
+  rawHeaders.forEach((_,i)=>{if(COLS_TO_DELETE.includes(idxToLetter(i)))delIdx.add(i);});
+  modHeaders=rawHeaders.filter((_,i)=>!delIdx.has(i));
+  modRows=rawRows.map(r=>{
+    const out=[];
+    for(let i=0;i<rawHeaders.length;i++){if(!delIdx.has(i))out.push(r[i]!==undefined?r[i]:'');}
+    return out;
+  });
+  const deletedLetters=[...delIdx].map(i=>idxToLetter(i));
+  document.getElementById('importMsg').textContent='✓ '+modHeaders.length+' colonnes · '+modRows.length.toLocaleString('fr-FR')+' lignes copiées';
+  currentPage=0;
+  populateEdited(deletedLetters);
+  populateControls();
+  switchTab('edit');
+}
+
+function populateEdited(deletedLetters){
+  document.getElementById('editEmpty').style.display='none';
+  document.getElementById('editContent').style.display='';
+  document.getElementById('editInfo').innerHTML=
+    'Colonnes supprimées : '+deletedLetters.map(l=>`<span class="badge badge-del">${l}</span>`).join(' ')+
+    ' &nbsp;|&nbsp; Colonnes restantes : <span class="badge badge-ok">'+modHeaders.length+'</span>'+
+    ' &nbsp;|&nbsp; Lignes : <span class="badge badge-info">'+modRows.length.toLocaleString('fr-FR')+'</span>';
+  document.getElementById('editStats').innerHTML=`
+    <div class="stat"><div class="stat-label">Lignes</div><div class="stat-val">${modRows.length.toLocaleString('fr-FR')}</div></div>
+    <div class="stat"><div class="stat-label">Colonnes</div><div class="stat-val">${modHeaders.length}</div></div>
+    <div class="stat"><div class="stat-label">Cols supprimées</div><div class="stat-val">${deletedLetters.length}</div></div>
+    <div class="stat"><div class="stat-label">Pages (50/p.)</div><div class="stat-val">${Math.ceil(modRows.length/PAGE_SIZE)}</div></div>`;
+  renderPage();
+}
+
+function renderPage(){
+  const start=currentPage*PAGE_SIZE;
+  const end=Math.min(start+PAGE_SIZE,modRows.length);
+  renderTable(document.getElementById('editWrap'),modHeaders,modRows.slice(start,end),false);
+  const total=Math.ceil(modRows.length/PAGE_SIZE);
+  document.getElementById('pagerInfo').textContent=
+    'Lignes '+(start+1).toLocaleString('fr-FR')+'–'+end.toLocaleString('fr-FR')+
+    ' sur '+modRows.length.toLocaleString('fr-FR')+' · Page '+(currentPage+1)+'/'+total;
+  document.getElementById('btnPrev').disabled=currentPage===0;
+  document.getElementById('btnNext').disabled=currentPage>=total-1;
+}
+
+function changePage(dir){
+  currentPage=Math.max(0,Math.min(currentPage+dir,Math.ceil(modRows.length/PAGE_SIZE)-1));
+  renderPage();
+}
+
+function exportTable(){
+  const ws=XLSX.utils.aoa_to_sheet([modHeaders,...modRows]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Table modifiée');
+  XLSX.writeFile(wb,'table_modifiee.xlsx');
+}
+
+function populateControls(){
+  const allOpts=modHeaders.map((h,i)=>`<option value="${i}">${h}</option>`).join('');
+  const sample=modRows.slice(0,50);
+  const numIdx=modHeaders.map((_,i)=>
+    sample.filter(r=>r[i]!==''&&r[i]!==null&&!isNaN(parseFloat(r[i]))).length>sample.length*0.4?i:-1
+  ).filter(i=>i>=0);
+  const numOpts=numIdx.length?numIdx.map(i=>`<option value="${i}">${modHeaders[i]}</option>`).join(''):allOpts;
+  ['pivotRow','pivotCol','chartX'].forEach(id=>document.getElementById(id).innerHTML=allOpts);
+  ['pivotVal','chartY'].forEach(id=>document.getElementById(id).innerHTML=numOpts);
+  if(modHeaders.length>1)document.getElementById('pivotCol').value='1';
+  ['pivotContent','chartsContent'].forEach(id=>document.getElementById(id).style.display='');
+  ['pivotEmpty','chartsEmpty'].forEach(id=>document.getElementById(id).style.display='none');
+  buildPivot();buildCharts();
+}
+
+function aggFn(vals,m){
+  const nums=vals.map(v=>parseFloat(v)).filter(v=>!isNaN(v));
+  if(m==='count')return vals.length;
+  if(!nums.length)return 0;
+  if(m==='sum')return nums.reduce((a,b)=>a+b,0);
+  if(m==='avg')return nums.reduce((a,b)=>a+b,0)/nums.length;
+  if(m==='min')return Math.min(...nums);
+  if(m==='max')return Math.max(...nums);
+  return 0;
+}
+function fmt(v,m){const n=Number(v);return isNaN(n)?v:m==='avg'?n.toFixed(2):Math.round(n).toLocaleString('fr-FR');}
+
+function buildPivot(){
+  const rI=+document.getElementById('pivotRow').value;
+  const cI=+document.getElementById('pivotCol').value;
+  const vI=+document.getElementById('pivotVal').value;
+  const m=document.getElementById('pivotAgg').value;
+  const map={},rK=new Set(),cK=new Set();
+  modRows.forEach(r=>{
+    const rv=String(r[rI]??''),cv=String(r[cI]??'');
+    rK.add(rv);cK.add(cv);
+    if(!map[rv])map[rv]={};
+    if(!map[rv][cv])map[rv][cv]=[];
+    map[rv][cv].push(r[vI]??0);
+  });
+  const rA=[...rK].sort().slice(0,30),cA=[...cK].sort().slice(0,15);
+  let h=`<table class="pivot-tbl"><thead><tr><th>${modHeaders[rI]} / ${modHeaders[cI]}</th>`;
+  cA.forEach(c=>h+=`<th>${c}</th>`);
+  h+=`<th class="total">Total</th></tr></thead><tbody>`;
+  const ct={};
+  rA.forEach(rv=>{
+    h+=`<tr><td><b>${rv}</b></td>`;
+    let rt=0;
+    cA.forEach(cv=>{
+      const v=map[rv]?.[cv]?aggFn(map[rv][cv],m):0;
+      rt+=Number(v);ct[cv]=(ct[cv]||0)+Number(v);
+      h+=`<td>${fmt(v,m)}</td>`;
+    });
+    h+=`<td class="total">${fmt(rt,m)}</td></tr>`;
+  });
+  h+=`<tr><td><b>Total</b></td>`;
+  let grand=0;
+  cA.forEach(cv=>{grand+=ct[cv]||0;h+=`<td class="total">${fmt(ct[cv]||0,m)}</td>`;});
+  h+=`<td class="total" style="background:#185FA5;color:#fff">${fmt(grand,m)}</td></tr></tbody></table>`;
+  document.getElementById('pivotWrap').innerHTML=h;
+}
+
+const PAL=['#185FA5','#1D9E75','#D85A30','#BA7517','#D4537E','#639922','#7F77DD','#5DCAA5','#F0997B','#AFA9EC'];
+
+function buildCharts(){
+  const xI=+document.getElementById('chartX').value;
+  const yI=+document.getElementById('chartY').value;
+  const limit=+document.getElementById('chartLimit').value;
+  Object.values(charts).forEach(c=>c.destroy());charts={};
+  const agg={};
+  modRows.forEach(r=>{
+    const k=String(r[xI]??'(vide)');
+    if(!agg[k])agg[k]=0;
+    agg[k]+=parseFloat(r[yI])||0;
+  });
+  const sorted=Object.entries(agg).sort((a,b)=>b[1]-a[1]).slice(0,limit);
+  const labels=sorted.map(e=>e[0]);
+  const vals=sorted.map(e=>Math.round(e[1]));
+  const bg=labels.map((_,i)=>PAL[i%PAL.length]);
+  const yLabel=modHeaders[yI]||'Valeur';
+  function mk(id,type,axis){
+    const ctx=document.getElementById(id).getContext('2d');
+    const isC=type==='doughnut';
+    charts[id]=new Chart(ctx,{type,data:{labels,datasets:[{label:yLabel,data:vals,
+      backgroundColor:isC?bg:PAL[0]+'cc',borderColor:isC?bg:PAL[0],
+      borderWidth:type==='line'?2:0,fill:false,tension:.3,pointRadius:type==='line'?3:0}]},
+      options:{responsive:true,maintainAspectRatio:true,indexAxis:axis||'x',
+      plugins:{legend:{display:isC,position:'right',labels:{font:{size:11},padding:8}}},
+      scales:isC?{}:{x:{ticks:{maxRotation:axis==='y'?0:40,font:{size:10},maxTicksLimit:15}},
+      y:{ticks:{font:{size:10}}}}}});
+  }
+  mk('chartBar','bar','x');mk('chartPie','doughnut',null);mk('chartLine','line','x');mk('chartHBar','bar','y');
+}
+</script>
+</body></html>
