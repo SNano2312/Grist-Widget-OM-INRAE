@@ -2,12 +2,14 @@
 <html><head><meta charset="UTF-8">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font-sans,'system-ui');font-size:14px;color:var(--color-text-primary);background:var(--color-background-tertiary)}
 .app{max-width:1400px;margin:0 auto;padding:1.5rem}
-.tabs{display:flex;gap:2px;border-bottom:0.5px solid var(--color-border-tertiary);margin-bottom:1.5rem}
-.tab{padding:8px 20px;cursor:pointer;border-radius:6px 6px 0 0;font-size:13px;font-weight:500;color:var(--color-text-secondary);background:transparent;border:0.5px solid transparent;border-bottom:none;position:relative;top:1px}
+.tabs{display:flex;gap:2px;border-bottom:0.5px solid var(--color-border-tertiary);margin-bottom:1.5rem;flex-wrap:wrap}
+.tab{padding:8px 18px;cursor:pointer;border-radius:6px 6px 0 0;font-size:13px;font-weight:500;color:var(--color-text-secondary);background:transparent;border:0.5px solid transparent;border-bottom:none;position:relative;top:1px}
 .tab.active{color:var(--color-text-primary);background:var(--color-background-primary);border-color:var(--color-border-tertiary)}
 .panel{display:none}.panel.active{display:block}
 .card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.25rem;margin-bottom:1rem}
@@ -41,20 +43,17 @@ select{padding:7px 10px;border:0.5px solid var(--color-border-secondary);border-
 .pivot-tbl th{background:#E6F1FB;color:#0C447C}
 .pivot-tbl th.total{background:#185FA5;color:#fff}
 .pivot-tbl td.total{font-weight:500;background:var(--color-background-secondary)}
-/* CHARTS */
 .chart-controls{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:1rem}
 .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
 .chart-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem;position:relative}
 .chart-card.drilled{border-color:#185FA5;border-width:1.5px}
 .chart-card-title{font-size:12px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
 canvas{max-height:240px;cursor:pointer}
-/* BREADCRUMB */
 .breadcrumb{display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:8px;flex-wrap:wrap;min-height:20px}
 .bc-item{color:#185FA5;cursor:pointer;text-decoration:underline}
 .bc-item.current{color:var(--color-text-primary);text-decoration:none;cursor:default;font-weight:500}
 .bc-sep{color:var(--color-text-secondary)}
 .drill-hint{font-size:11px;color:var(--color-text-secondary);margin-bottom:10px;font-style:italic}
-/* DRILL TABLE */
 .drill-panel{display:none}.drill-panel.visible{display:block}
 .drill-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
 .drill-title{font-size:13px;font-weight:500}
@@ -64,7 +63,6 @@ canvas{max-height:240px;cursor:pointer}
 .col-check{display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding:4px 6px;border-radius:4px}
 .col-check:hover{background:var(--color-background-secondary)}
 .col-check input{cursor:pointer;width:14px;height:14px}
-/* STATUS */
 .status-bar{display:flex;align-items:center;justify-content:space-between;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:8px 14px;margin-bottom:1rem;font-size:12px;color:var(--color-text-secondary);flex-wrap:wrap;gap:8px}
 .save-dot{width:8px;height:8px;border-radius:50%;background:#C0DD97;display:inline-block;margin-right:6px}
 .save-dot.saving{background:#FAC775;animation:pulse .8s infinite}
@@ -75,6 +73,20 @@ canvas{max-height:240px;cursor:pointer}
 .info-box{background:var(--color-background-secondary);border-left:3px solid #378ADD;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;padding:.75rem 1rem;font-size:13px;color:var(--color-text-secondary);margin-bottom:1rem}
 .actions{display:flex;gap:8px;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
 .col-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;max-height:100px;overflow:auto}
+/* MAP */
+#mapContainer{height:560px;border-radius:var(--border-radius-lg);overflow:hidden;border:0.5px solid var(--color-border-tertiary);position:relative}
+.map-controls{display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap}
+.map-status{font-size:12px;color:var(--color-text-secondary);font-style:italic}
+.map-legend{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 14px;margin-top:1rem;font-size:12px}
+.map-legend-title{font-weight:500;margin-bottom:8px}
+.legend-items{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.legend-item{display:flex;align-items:center;gap:6px}
+.legend-circle{border-radius:50%;background:#185FA5;opacity:.7;display:inline-block;flex-shrink:0}
+.map-table{margin-top:1rem}
+.map-table .tbl-scroll{max-height:280px}
+.geocode-progress{font-size:12px;color:var(--color-text-secondary);margin-top:6px}
+.geocode-bar{height:3px;background:var(--color-background-secondary);border-radius:2px;margin-top:4px;overflow:hidden}
+.geocode-fill{height:100%;background:#185FA5;border-radius:2px;transition:width .3s}
 @media(max-width:800px){.chart-grid{grid-template-columns:1fr}.chart-controls{grid-template-columns:1fr 1fr}}
 </style>
 </head>
@@ -95,6 +107,7 @@ canvas{max-height:240px;cursor:pointer}
   <div class="tab" onclick="switchTab('edit')">② Table modifiée</div>
   <div class="tab" onclick="switchTab('pivot')">③ TCD</div>
   <div class="tab" onclick="switchTab('charts')">④ Graphiques</div>
+  <div class="tab" onclick="switchTab('map');initMap()">⑤ Carte</div>
 </div>
 
 <!-- TAB 1 -->
@@ -161,7 +174,6 @@ canvas{max-height:240px;cursor:pointer}
 <div class="panel" id="panel-charts">
   <div id="chartsEmpty" class="empty">Chargez d'abord un fichier dans l'onglet Import</div>
   <div id="chartsContent" style="display:none">
-
     <div class="card">
       <div class="chart-controls">
         <div><label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:4px">Axe X — Niveau 1</label><select id="chartX" onchange="resetAllDrills();saveSettings()"></select></div>
@@ -174,20 +186,14 @@ canvas{max-height:240px;cursor:pointer}
         </div>
       </div>
     </div>
-
-    <!-- Breadcrumb global -->
     <div class="breadcrumb" id="breadcrumb"></div>
     <div class="drill-hint" id="drillHint">Cliquez sur une barre ou portion pour descendre dans le détail.</div>
-
-    <!-- 4 graphiques -->
-    <div class="chart-grid" id="chartGrid">
+    <div class="chart-grid">
       <div class="chart-card" id="card-bar"><div class="chart-card-title"><span>Barres verticales</span><button class="btn sm" id="back-bar" onclick="drillUp()" style="display:none">↑ Remonter</button></div><canvas id="chartBar"></canvas></div>
       <div class="chart-card" id="card-pie"><div class="chart-card-title"><span>Secteurs (donut)</span><button class="btn sm" id="back-pie" onclick="drillUp()" style="display:none">↑ Remonter</button></div><canvas id="chartPie"></canvas></div>
       <div class="chart-card" id="card-line"><div class="chart-card-title"><span>Lignes</span><button class="btn sm" id="back-line" onclick="drillUp()" style="display:none">↑ Remonter</button></div><canvas id="chartLine"></canvas></div>
       <div class="chart-card" id="card-hbar"><div class="chart-card-title"><span>Barres horizontales</span><button class="btn sm" id="back-hbar" onclick="drillUp()" style="display:none">↑ Remonter</button></div><canvas id="chartHBar"></canvas></div>
     </div>
-
-    <!-- Tableau drill niveau 3 -->
     <div class="drill-panel" id="drillPanel">
       <div class="col-picker">
         <div class="col-picker-title">
@@ -209,23 +215,51 @@ canvas{max-height:240px;cursor:pointer}
         <div class="pager"><span class="pager-info" id="drillPagerInfo"></span><button class="btn" id="drillPrev" onclick="changeDrillPage(-1)">← Préc.</button><button class="btn" id="drillNext" onclick="changeDrillPage(1)">Suiv. →</button></div>
       </div>
     </div>
-
   </div>
 </div>
+
+<!-- TAB 5 : CARTE -->
+<div class="panel" id="panel-map">
+  <div id="mapEmpty" class="empty">Chargez d'abord un fichier dans l'onglet Import</div>
+  <div id="mapContent" style="display:none">
+    <div class="card" style="padding:1rem">
+      <div class="map-controls">
+        <div>
+          <label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:4px">Colonne destination</label>
+          <select id="mapColSelect" onchange="reloadMap()" style="width:260px"></select>
+        </div>
+        <button class="btn primary" onclick="reloadMap()" style="margin-top:18px">Actualiser la carte</button>
+        <div id="geocodeProgress" class="geocode-progress" style="margin-top:18px"></div>
+      </div>
+      <div class="geocode-bar"><div class="geocode-fill" id="geocodeFill" style="width:0%"></div></div>
+    </div>
+    <div id="mapContainer"></div>
+    <div class="map-legend" id="mapLegend" style="display:none">
+      <div class="map-legend-title">Légende — taille proportionnelle au nombre de missions</div>
+      <div class="legend-items" id="legendItems"></div>
+    </div>
+    <div class="map-table" id="mapTableWrap" style="display:none">
+      <div style="font-size:13px;font-weight:500;margin-bottom:8px">Détail par destination</div>
+      <div class="tbl-outer"><div class="tbl-scroll" id="mapTableBody"></div></div>
+    </div>
+  </div>
 </div>
 
+</div>
 <script>
 const COLS_TO_DELETE=['C','D','E','N','AI'];
 const PAGE_SIZE=50;
 const KEY_WORDS=['no ','nom','matricule','date','objet','statut','type','total','montant','orga','destinat'];
-const STORAGE_KEY='grist_data', SETTINGS_KEY='grist_settings';
+const STORAGE_KEY='grist_data2',SETTINGS_KEY='grist_settings2';
+const GEO_CACHE_KEY='grist_geocache';
 
 let rawHeaders=[],rawRows=[],modHeaders=[],modRows=[],currentPage=0;
-let charts={bar:null,pie:null,line:null,hbar:null};
+let chartObjs={bar:null,pie:null,line:null,hbar:null};
 let drillLevel=0,drillFilter1=null,drillFilter2=null,drillRows=[],drillPage=0;
 let visibleColIdx=[];
 let saveTimer=null;
-
+let leafletMap=null,mapInitialized=false,mapMarkers=[];
+let geoCache={};
 const PAL=['#185FA5','#1D9E75','#D85A30','#BA7517','#D4537E','#639922','#7F77DD','#5DCAA5','#F0997B','#AFA9EC'];
 
 // ── UTILS ──
@@ -240,24 +274,24 @@ async function saveData(){
   try{
     const payload={fileName:document.getElementById('fileName').textContent,modHeaders,modRows,savedAt:new Date().toISOString()};
     const json=JSON.stringify(payload);
-    const chunkSize=4*1024*1024;
-    const chunks=Math.ceil(json.length/chunkSize);
+    const cs=4*1024*1024,chunks=Math.ceil(json.length/cs);
     await window.storage.set(STORAGE_KEY+'_meta',JSON.stringify({chunks,savedAt:payload.savedAt,fileName:payload.fileName,rows:modRows.length,cols:modHeaders.length}));
-    for(let i=0;i<chunks;i++) await window.storage.set(STORAGE_KEY+'_chunk_'+i,json.slice(i*chunkSize,(i+1)*chunkSize));
+    for(let i=0;i<chunks;i++)await window.storage.set(STORAGE_KEY+'_chunk_'+i,json.slice(i*cs,(i+1)*cs));
     setSaveDot('ok','Sauvegardé — '+new Date().toLocaleTimeString('fr-FR'));
     document.getElementById('statusBar').style.display='flex';
   }catch(e){setSaveDot('error','Erreur : '+e.message);}
 }
 async function saveSettings(){
   try{
-    const s={pivotRow:document.getElementById('pivotRow').value,pivotCol:document.getElementById('pivotCol').value,pivotVal:document.getElementById('pivotVal').value,pivotAgg:document.getElementById('pivotAgg').value,chartX:document.getElementById('chartX').value,chartX2:document.getElementById('chartX2').value,chartY:document.getElementById('chartY').value,chartLimit:document.getElementById('chartLimit').value,visibleColIdx};
+    const s={pivotRow:document.getElementById('pivotRow').value,pivotCol:document.getElementById('pivotCol').value,pivotVal:document.getElementById('pivotVal').value,pivotAgg:document.getElementById('pivotAgg').value,chartX:document.getElementById('chartX').value,chartX2:document.getElementById('chartX2').value,chartY:document.getElementById('chartY').value,chartLimit:document.getElementById('chartLimit').value,visibleColIdx,mapCol:document.getElementById('mapColSelect').value};
     await window.storage.set(SETTINGS_KEY,JSON.stringify(s));
   }catch(e){}
 }
 async function loadSaved(){
+  // Charger le cache géo
+  try{const r=await window.storage.get(GEO_CACHE_KEY);if(r)geoCache=JSON.parse(r.value);}catch(e){}
   try{
-    const r=await window.storage.get(STORAGE_KEY+'_meta');
-    if(!r)return;
+    const r=await window.storage.get(STORAGE_KEY+'_meta');if(!r)return;
     const meta=JSON.parse(r.value);
     const d=new Date(meta.savedAt);
     document.getElementById('restoreMsg').textContent=`Données du ${d.toLocaleDateString('fr-FR')} à ${d.toLocaleTimeString('fr-FR')} — ${meta.fileName} (${(+meta.rows).toLocaleString('fr-FR')} lignes, ${meta.cols} colonnes)`;
@@ -270,19 +304,17 @@ async function restoreData(){
   try{
     const metaRes=await window.storage.get(STORAGE_KEY+'_meta');
     const meta=JSON.parse(metaRes.value);
-    let json='';
-    for(let i=0;i<meta.chunks;i++){const r=await window.storage.get(STORAGE_KEY+'_chunk_'+i);json+=r.value;}
+    let json='';for(let i=0;i<meta.chunks;i++){const r=await window.storage.get(STORAGE_KEY+'_chunk_'+i);json+=r.value;}
     const payload=JSON.parse(json);
     modHeaders=payload.modHeaders;modRows=payload.modRows;
     document.getElementById('fileName').textContent=payload.fileName;
     document.getElementById('fileInfo').textContent=modHeaders.length+' colonnes · '+modRows.length.toLocaleString('fr-FR')+' lignes';
-    currentPage=0;
-    populateEdited([],true);populateControls();buildColPicker();
+    currentPage=0;populateEdited([],true);populateControls();buildColPicker();populateMapControls();
     await restoreSettings();
     setSaveDot('ok','Restauré — '+payload.fileName);
     document.getElementById('importMsg').textContent='✓ Restauré depuis la sauvegarde';
     document.getElementById('previewCard').style.display='';
-    document.getElementById('colChips').innerHTML='<span class="badge badge-warn">Données restaurées depuis la sauvegarde</span>';
+    document.getElementById('colChips').innerHTML='<span class="badge badge-warn">Données restaurées</span>';
   }catch(e){setSaveDot('error','Erreur restauration : '+e.message);console.error(e);}
 }
 async function restoreSettings(){
@@ -290,6 +322,7 @@ async function restoreSettings(){
     const r=await window.storage.get(SETTINGS_KEY);if(!r)return;
     const s=JSON.parse(r.value);
     ['pivotRow','pivotCol','pivotVal','pivotAgg','chartX','chartX2','chartY','chartLimit'].forEach(id=>{const el=document.getElementById(id);if(el&&s[id]!==undefined)el.value=s[id];});
+    if(s.mapCol!==undefined){const el=document.getElementById('mapColSelect');if(el)el.value=s.mapCol;}
     if(s.visibleColIdx&&s.visibleColIdx.length){visibleColIdx=s.visibleColIdx;document.querySelectorAll('#colPickerGrid input[type=checkbox]').forEach(cb=>{cb.checked=visibleColIdx.includes(+cb.value);});}
     buildPivot();resetAllDrills();
   }catch(e){}
@@ -301,6 +334,7 @@ async function clearSavedData(){
     const r=await window.storage.get(STORAGE_KEY+'_meta');
     if(r){const meta=JSON.parse(r.value);for(let i=0;i<meta.chunks;i++)await window.storage.delete(STORAGE_KEY+'_chunk_'+i);await window.storage.delete(STORAGE_KEY+'_meta');}
     await window.storage.delete(SETTINGS_KEY);
+    await window.storage.delete(GEO_CACHE_KEY);
     setSaveDot('ok','Données effacées');setTimeout(()=>document.getElementById('statusBar').style.display='none',2000);
   }catch(e){}
 }
@@ -357,7 +391,7 @@ function applyAndCopy(){
   modRows=rawRows.map(r=>{const out=[];for(let i=0;i<rawHeaders.length;i++){if(!delIdx.has(i))out.push(r[i]!==undefined?r[i]:'');}return out;});
   const del=[...delIdx].map(i=>idxToLetter(i));
   document.getElementById('importMsg').textContent='✓ '+modHeaders.length+' colonnes · '+modRows.length.toLocaleString('fr-FR')+' lignes copiées';
-  currentPage=0;populateEdited(del);populateControls();buildColPicker();switchTab('edit');scheduleSave();
+  currentPage=0;populateEdited(del);populateControls();buildColPicker();populateMapControls();switchTab('edit');scheduleSave();
 }
 
 function populateEdited(del,fromRestore){
@@ -387,8 +421,7 @@ function buildColPicker(){
     cb.addEventListener('change',()=>{syncVisibleCols();renderDrillPage();saveSettings();});
     label.appendChild(cb);label.appendChild(document.createTextNode(h.length>22?h.slice(0,22)+'…':h));
     grid.appendChild(label);
-  });
-  setColMode('key');
+  });setColMode('key');
 }
 function setColMode(mode){
   const cbs=document.querySelectorAll('#colPickerGrid input[type=checkbox]');
@@ -429,12 +462,8 @@ function buildPivot(){
   document.getElementById('pivotWrap').innerHTML=h;
 }
 
-// ── GRAPHIQUES + DRILL (partagé entre les 4) ──
-function aggregate(rows,gIdx,vIdx,limit){
-  const map={};rows.forEach(r=>{const k=String(r[gIdx]??'(vide)');if(!map[k])map[k]=0;map[k]+=parseFloat(r[vIdx])||0;});
-  return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,limit);
-}
-
+// ── CHARTS + DRILL ──
+function aggregate(rows,gIdx,vIdx,limit){const map={};rows.forEach(r=>{const k=String(r[gIdx]??'(vide)');if(!map[k])map[k]=0;map[k]+=parseFloat(r[vIdx])||0;});return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,limit);}
 function buildAllCharts(rows,level){
   const{xI,x2I,yI,limit}=getCtrl();
   const gIdx=level===0?xI:x2I;
@@ -442,90 +471,153 @@ function buildAllCharts(rows,level){
   const labels=entries.map(e=>e[0]),vals=entries.map(e=>Math.round(e[1]));
   const bg=labels.map((_,i)=>PAL[i%PAL.length]);
   const yLabel=modHeaders[yI]||'Valeur';
-
-  function onClick(labels,rows,level){
-    return(evt,els)=>{if(!els.length)return;handleDrillClick(labels[els[0].index],level,rows);};
-  }
-
-  const baseOpts={responsive:true,maintainAspectRatio:true,
-    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.parsed.y!==undefined?c.parsed.y:c.parsed}.toLocaleString('fr-FR')`}}},
-    scales:{x:{ticks:{maxRotation:40,font:{size:10},maxTicksLimit:15}},y:{ticks:{font:{size:10},callback:v=>Number(v).toLocaleString('fr-FR')}}}
-  };
-  const circOpts={responsive:true,maintainAspectRatio:true,plugins:{legend:{display:true,position:'right',labels:{font:{size:10},padding:8}},tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed.toLocaleString('fr-FR')}`}}}};
-
-  ['bar','pie','line','hbar'].forEach(id=>{if(charts[id]){charts[id].destroy();charts[id]=null;}});
-
-  charts.bar=new Chart(document.getElementById('chartBar').getContext('2d'),{type:'bar',data:{labels,datasets:[{label:yLabel,data:vals,backgroundColor:bg,borderWidth:0,borderRadius:3}]},options:{...baseOpts,onClick:onClick(labels,rows,level)}});
-  charts.pie=new Chart(document.getElementById('chartPie').getContext('2d'),{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:bg,borderWidth:0}]},options:{...circOpts,onClick:onClick(labels,rows,level)}});
-  charts.line=new Chart(document.getElementById('chartLine').getContext('2d'),{type:'line',data:{labels,datasets:[{label:yLabel,data:vals,borderColor:PAL[0],backgroundColor:PAL[0]+'33',borderWidth:2,pointRadius:3,fill:true,tension:.3}]},options:{...baseOpts,onClick:onClick(labels,rows,level)}});
-  charts.hbar=new Chart(document.getElementById('chartHBar').getContext('2d'),{type:'bar',data:{labels,datasets:[{label:yLabel,data:vals,backgroundColor:bg,borderWidth:0,borderRadius:3}]},options:{...baseOpts,indexAxis:'y',onClick:onClick(labels,rows,level),scales:{x:{ticks:{font:{size:10},callback:v=>Number(v).toLocaleString('fr-FR')}},y:{ticks:{font:{size:10},maxTicksLimit:15}}}}});
-
-  // Afficher/masquer boutons remonter
+  function onClick(labels,rows,level){return(evt,els)=>{if(!els.length)return;handleDrillClick(labels[els[0].index],level,rows);};}
+  const baseOpts={responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${Number(c.parsed.y!==undefined?c.parsed.y:c.parsed).toLocaleString('fr-FR')}`}}},scales:{x:{ticks:{maxRotation:40,font:{size:10},maxTicksLimit:15}},y:{ticks:{font:{size:10},callback:v=>Number(v).toLocaleString('fr-FR')}}}};
+  const circOpts={responsive:true,maintainAspectRatio:true,plugins:{legend:{display:true,position:'right',labels:{font:{size:10},padding:8}},tooltip:{callbacks:{label:c=>`${c.label}: ${Number(c.parsed).toLocaleString('fr-FR')}`}}}};
+  ['bar','pie','line','hbar'].forEach(id=>{if(chartObjs[id]){chartObjs[id].destroy();chartObjs[id]=null;}});
+  chartObjs.bar=new Chart(document.getElementById('chartBar').getContext('2d'),{type:'bar',data:{labels,datasets:[{label:yLabel,data:vals,backgroundColor:bg,borderWidth:0,borderRadius:3}]},options:{...baseOpts,onClick:onClick(labels,rows,level)}});
+  chartObjs.pie=new Chart(document.getElementById('chartPie').getContext('2d'),{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:bg,borderWidth:0}]},options:{...circOpts,onClick:onClick(labels,rows,level)}});
+  chartObjs.line=new Chart(document.getElementById('chartLine').getContext('2d'),{type:'line',data:{labels,datasets:[{label:yLabel,data:vals,borderColor:PAL[0],backgroundColor:PAL[0]+'33',borderWidth:2,pointRadius:3,fill:true,tension:.3}]},options:{...baseOpts,onClick:onClick(labels,rows,level)}});
+  chartObjs.hbar=new Chart(document.getElementById('chartHBar').getContext('2d'),{type:'bar',data:{labels,datasets:[{label:yLabel,data:vals,backgroundColor:bg,borderWidth:0,borderRadius:3}]},options:{...baseOpts,indexAxis:'y',onClick:onClick(labels,rows,level),scales:{x:{ticks:{font:{size:10},callback:v=>Number(v).toLocaleString('fr-FR')}},y:{ticks:{font:{size:10},maxTicksLimit:15}}}}});
   ['bar','pie','line','hbar'].forEach(id=>{document.getElementById('back-'+id).style.display=drillLevel>0?'':'none';document.getElementById('card-'+id).classList.toggle('drilled',drillLevel>0);});
-  document.getElementById('drillHint').textContent=level===0?`Cliquez sur une barre/portion → détail par « ${modHeaders[x2I]} »`:`Cliquez → voir les lignes correspondantes`;
+  document.getElementById('drillHint').textContent=level===0?`Cliquez sur une barre/portion → détail par « ${modHeaders[x2I]} »`:`Cliquez → voir les lignes`;
   updateBreadcrumb();
 }
-
-function resetAllDrills(){
-  drillLevel=0;drillFilter1=null;drillFilter2=null;drillRows=[];drillPage=0;
-  document.getElementById('drillPanel').classList.remove('visible');
-  buildAllCharts(modRows,0);
-  updateBreadcrumb();
-}
-
-function drillUp(){
-  if(drillLevel===2){
-    drillLevel=1;drillFilter2=null;drillPage=0;
-    document.getElementById('drillPanel').classList.remove('visible');
-    const{xI}=getCtrl();
-    buildAllCharts(modRows.filter(r=>String(r[xI]??'')==drillFilter1),1);
-  } else if(drillLevel===1){resetAllDrills();}
-}
-
-function handleDrillClick(clicked,level,rows){
-  const{xI,x2I}=getCtrl();
-  if(level===0){
-    drillLevel=1;drillFilter1=clicked;
-    buildAllCharts(rows.filter(r=>String(r[xI]??'')==clicked),1);
-    document.getElementById('drillPanel').classList.remove('visible');
-  } else {
-    drillLevel=2;drillFilter2=clicked;
-    drillRows=rows.filter(r=>String(r[x2I]??'')==clicked);
-    drillPage=0;showDrillTable();
-  }
-  updateBreadcrumb();
-}
-
-function showDrillTable(){
-  const{xI,x2I}=getCtrl();
-  document.getElementById('drillPanel').classList.add('visible');
-  document.getElementById('drillTitle').textContent=`${modHeaders[xI]} = « ${drillFilter1} »  ·  ${modHeaders[x2I]} = « ${drillFilter2} »  —  ${drillRows.length.toLocaleString('fr-FR')} lignes`;
-  renderDrillPage();
-}
-function renderDrillPage(){
-  if(!drillRows.length)return;
-  const s=drillPage*PAGE_SIZE,e=Math.min(s+PAGE_SIZE,drillRows.length);
-  const cols=visibleColIdx.length?visibleColIdx:modHeaders.map((_,i)=>i);
-  renderTable(document.getElementById('drillWrap'),modHeaders,drillRows.slice(s,e),false,cols);
-  const t=Math.ceil(drillRows.length/PAGE_SIZE);
-  document.getElementById('drillPagerInfo').textContent='Lignes '+(s+1)+'–'+e+' sur '+drillRows.length.toLocaleString('fr-FR')+' · Page '+(drillPage+1)+'/'+(t||1);
-  document.getElementById('drillPrev').disabled=drillPage===0;document.getElementById('drillNext').disabled=drillPage>=t-1;
-}
+function resetAllDrills(){drillLevel=0;drillFilter1=null;drillFilter2=null;drillRows=[];drillPage=0;document.getElementById('drillPanel').classList.remove('visible');buildAllCharts(modRows,0);updateBreadcrumb();}
+function drillUp(){if(drillLevel===2){drillLevel=1;drillFilter2=null;drillPage=0;document.getElementById('drillPanel').classList.remove('visible');const{xI}=getCtrl();buildAllCharts(modRows.filter(r=>String(r[xI]??'')==drillFilter1),1);}else if(drillLevel===1){resetAllDrills();}updateBreadcrumb();}
+function handleDrillClick(clicked,level,rows){const{xI,x2I}=getCtrl();if(level===0){drillLevel=1;drillFilter1=clicked;buildAllCharts(rows.filter(r=>String(r[xI]??'')==clicked),1);document.getElementById('drillPanel').classList.remove('visible');}else{drillLevel=2;drillFilter2=clicked;drillRows=rows.filter(r=>String(r[x2I]??'')==clicked);drillPage=0;showDrillTable();}updateBreadcrumb();}
+function showDrillTable(){const{xI,x2I}=getCtrl();document.getElementById('drillPanel').classList.add('visible');document.getElementById('drillTitle').textContent=`${modHeaders[xI]} = « ${drillFilter1} »  ·  ${modHeaders[x2I]} = « ${drillFilter2} »  —  ${drillRows.length.toLocaleString('fr-FR')} lignes`;renderDrillPage();}
+function renderDrillPage(){if(!drillRows.length)return;const s=drillPage*PAGE_SIZE,e=Math.min(s+PAGE_SIZE,drillRows.length);const cols=visibleColIdx.length?visibleColIdx:modHeaders.map((_,i)=>i);renderTable(document.getElementById('drillWrap'),modHeaders,drillRows.slice(s,e),false,cols);const t=Math.ceil(drillRows.length/PAGE_SIZE);document.getElementById('drillPagerInfo').textContent='Lignes '+(s+1)+'–'+e+' sur '+drillRows.length.toLocaleString('fr-FR')+' · Page '+(drillPage+1)+'/'+(t||1);document.getElementById('drillPrev').disabled=drillPage===0;document.getElementById('drillNext').disabled=drillPage>=t-1;}
 function changeDrillPage(dir){drillPage=Math.max(0,Math.min(drillPage+dir,Math.ceil(drillRows.length/PAGE_SIZE)-1));renderDrillPage();}
-function exportDrill(){
-  const cols=visibleColIdx.length?visibleColIdx:modHeaders.map((_,i)=>i);
-  const ws=XLSX.utils.aoa_to_sheet([cols.map(i=>modHeaders[i]),...drillRows.map(r=>cols.map(i=>r[i]))]);
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Détail');XLSX.writeFile(wb,'detail_drill.xlsx');
+function exportDrill(){const cols=visibleColIdx.length?visibleColIdx:modHeaders.map((_,i)=>i);const ws=XLSX.utils.aoa_to_sheet([cols.map(i=>modHeaders[i]),...drillRows.map(r=>cols.map(i=>r[i]))]);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Détail');XLSX.writeFile(wb,'detail_drill.xlsx');}
+function updateBreadcrumb(){const{xI,x2I}=getCtrl();const bc=document.getElementById('breadcrumb');if(!modHeaders.length){bc.innerHTML='';return;}let parts=[`<span class="bc-item${drillLevel===0?' current':''}" onclick="resetAllDrills()">Vue d'ensemble</span>`];if(drillFilter1){parts.push(`<span class="bc-sep">›</span><span class="bc-item${drillLevel===1?' current':''}" onclick="drillUp()">${modHeaders[xI]} = « ${drillFilter1} »</span>`);}if(drillFilter2){parts.push(`<span class="bc-sep">›</span><span class="bc-item current">${modHeaders[x2I]} = « ${drillFilter2} »</span>`);}bc.innerHTML=parts.join('');}
+
+// ── CARTE ──
+function populateMapControls(){
+  document.getElementById('mapEmpty').style.display='none';
+  document.getElementById('mapContent').style.display='';
+  const sel=document.getElementById('mapColSelect');
+  sel.innerHTML=modHeaders.map((h,i)=>`<option value="${i}">${h}</option>`).join('');
+  // Auto-sélectionner colonne contenant "destin"
+  const autoIdx=modHeaders.findIndex(h=>h.toLowerCase().includes('destin'));
+  if(autoIdx>=0)sel.value=autoIdx;
 }
 
-function updateBreadcrumb(){
-  const{xI,x2I}=getCtrl();
-  const bc=document.getElementById('breadcrumb');
-  if(!modHeaders.length){bc.innerHTML='';return;}
-  let parts=[`<span class="bc-item${drillLevel===0?' current':''}" onclick="resetAllDrills()">Vue d'ensemble</span>`];
-  if(drillFilter1){parts.push(`<span class="bc-sep">›</span><span class="bc-item${drillLevel===1?' current':''}" onclick="drillUp()">${modHeaders[xI]} = « ${drillFilter1} »</span>`);}
-  if(drillFilter2){parts.push(`<span class="bc-sep">›</span><span class="bc-item current">${modHeaders[x2I]} = « ${drillFilter2} »</span>`);}
-  bc.innerHTML=parts.join('');
+function initMap(){
+  if(mapInitialized)return;
+  mapInitialized=true;
+  leafletMap=L.map('mapContainer',{center:[20,10],zoom:2,zoomControl:true});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(leafletMap);
+  if(modRows.length>0)reloadMap();
+}
+
+// Géocodage via Nominatim (OpenStreetMap) — avec cache
+async function geocode(place){
+  const key=place.toLowerCase().trim();
+  if(geoCache[key])return geoCache[key];
+  try{
+    // Extraire ville et pays depuis "Ville, PAYS"
+    const parts=place.split(',');
+    const city=parts[0].trim();
+    const country=parts.length>1?parts[parts.length-1].trim():'';
+    const q=country?`${city}, ${country}`:city;
+    const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`;
+    const res=await fetch(url,{headers:{'Accept-Language':'fr','User-Agent':'GristTravelApp/1.0'}});
+    const data=await res.json();
+    if(data&&data.length>0){
+      const r={lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon),display:data[0].display_name};
+      geoCache[key]=r;
+      return r;
+    }
+  }catch(e){}
+  return null;
+}
+
+async function reloadMap(){
+  if(!leafletMap)initMap();
+  if(!modRows.length)return;
+
+  const colIdx=+document.getElementById('mapColSelect').value;
+
+  // Compter les occurrences par destination
+  const counts={};
+  modRows.forEach(r=>{
+    const v=String(r[colIdx]||'').trim();
+    if(v&&v!=='(vide)')counts[v]=(counts[v]||0)+1;
+  });
+
+  const destinations=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const total=destinations.length;
+
+  // Effacer anciens marqueurs
+  mapMarkers.forEach(m=>leafletMap.removeLayer(m));
+  mapMarkers=[];
+
+  const maxCount=Math.max(...destinations.map(d=>d[1]));
+
+  document.getElementById('geocodeProgress').textContent=`Géocodage de ${total} destinations…`;
+  document.getElementById('geocodeFill').style.width='0%';
+
+  let done=0;
+  const results=[];
+
+  for(const [place,count] of destinations){
+    const geo=await geocode(place);
+    done++;
+    document.getElementById('geocodeFill').style.width=Math.round(done/total*100)+'%';
+    document.getElementById('geocodeProgress').textContent=`Géocodage : ${done}/${total} — ${place}`;
+    if(geo){results.push({place,count,lat:geo.lat,lng:geo.lng});}
+    // Petite pause pour respecter le rate limit Nominatim
+    if(done%5===0)await new Promise(r=>setTimeout(r,200));
+  }
+
+  // Sauvegarder le cache
+  try{await window.storage.set(GEO_CACHE_KEY,JSON.stringify(geoCache));}catch(e){}
+
+  // Ajouter les bulles
+  results.forEach(({place,count,lat,lng})=>{
+    const radius=8+Math.sqrt(count/maxCount)*40;
+    const circle=L.circleMarker([lat,lng],{
+      radius,
+      fillColor:'#185FA5',
+      color:'#fff',
+      weight:1.5,
+      fillOpacity:0.65
+    });
+    circle.bindPopup(`<b>${place}</b><br>${count.toLocaleString('fr-FR')} mission${count>1?'s':''}`);
+    circle.addTo(leafletMap);
+    mapMarkers.push(circle);
+  });
+
+  // Ajuster la vue
+  if(results.length>0){
+    const bounds=L.latLngBounds(results.map(r=>[r.lat,r.lng]));
+    leafletMap.fitBounds(bounds,{padding:[30,30]});
+  }
+
+  document.getElementById('geocodeProgress').textContent=`✓ ${results.length} destinations placées sur la carte`;
+  document.getElementById('geocodeFill').style.width='100%';
+
+  // Légende
+  const legendItems=document.getElementById('legendItems');
+  const steps=[1,Math.round(maxCount/4),Math.round(maxCount/2),maxCount];
+  legendItems.innerHTML=steps.map(s=>{
+    const r=8+Math.sqrt(s/maxCount)*40;
+    return `<div class="legend-item"><span class="legend-circle" style="width:${r*1.5}px;height:${r*1.5}px"></span><span>${s.toLocaleString('fr-FR')} mission${s>1?'s':''}</span></div>`;
+  }).join('');
+  document.getElementById('mapLegend').style.display='';
+
+  // Tableau récap
+  const tbody=document.getElementById('mapTableBody');
+  let th='<table><thead><tr><th>#</th><th>Destination</th><th>Missions</th><th>% du total</th></tr></thead><tbody>';
+  const totalMissions=destinations.reduce((s,[,c])=>s+c,0);
+  results.slice(0,50).forEach(({place,count},i)=>{
+    const pct=(count/totalMissions*100).toFixed(1);
+    th+=`<tr><td>${i+1}</td><td>${place}</td><td>${count.toLocaleString('fr-FR')}</td><td>${pct}%</td></tr>`;
+  });
+  th+='</tbody></table>';
+  tbody.innerHTML=th;
+  document.getElementById('mapTableWrap').style.display='';
 }
 
 loadSaved();
